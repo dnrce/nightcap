@@ -54,14 +54,24 @@ log() {
 }
 
 reset_timer() {
-  date +%s > /root/idler/timestamp
+  date +%s > $TIMESTAMP
 }
 
 timed_out() {
   current=$(date +%s)
-  last=$(cat /root/idler/timestamp)
+  last=$(< $TIMESTAMP)
   [[ "$((current-last))" -gt "$TIMEOUT" ]]
 }
+
+quit() {
+  rm $TIMESTAMP
+  exit
+}
+
+trap quit SIGINT SIGTERM
+
+TIMESTAMP=$(mktemp -p /var/tmp nightcap.XXXXXXXXXX)
+reset_timer
 
 # main program logic
 while true; do
