@@ -66,6 +66,7 @@ timed_out() {
 # main program logic
 while true; do
   if safe_to_sleep; then
+    log "Idle, waiting for timeout"
     if timed_out; then
       log "Sleeping..."
       pre_sleep
