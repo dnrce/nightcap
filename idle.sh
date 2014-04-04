@@ -71,7 +71,7 @@ while true; do
       log "Sleeping..."
       pre_sleep
       /usr/sbin/pm-suspend
-      log "Woke up."
+      log "Wake up"
       reset_timer
       post_sleep
     fi
