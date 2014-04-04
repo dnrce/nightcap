@@ -10,13 +10,31 @@ post_sleep () {
   ssh -q 192.168.0.18 "iptables -D FORWARD -p udp -d 192.168.0.32 --dport 43971 -j DROP"
 }
 
-# collect data on system activity
-NUM_USERS_LOGGED_IN=$(who -q | tail -n1 | grep -o "[0-9]*")
-NUM_ACTIVE_CONNECTIONS=$(netstat -np --inet | tail -n +3 | grep -v "127\.0\.0\.1\|transmission-d$" | wc -l)
-
 # utility functions to make the logic easier to read
-no_activity() {
-  [[ "$NUM_ACTIVE_CONNECTIONS" == "0" ]]
+safe_to_sleep() {
+  UNCLEAN_RAID_DEVICES=$(mdadm --detail /dev/md* | grep '^\s*State : ' | grep -v clean | wc -l)
+  if [[ "$UNCLEAN_RAID_DEVICES" -gt "0" ]]; then
+    log "Unclean RAID device(s)"
+    return 1
+  fi
+
+  NUM_USERS_LOGGED_IN=$(who -q | tail -n1 | grep -o "[0-9]*")
+  if [[ "$NUM_USERS_LOGGED_IN" -gt "0" ]]; then
+    log "Active user session(s)"
+    return 1
+  fi
+
+  NUM_ACTIVE_CONNECTIONS=$(netstat -np --inet | tail -n +3 | grep -v "127\.0\.0\.1\|transmission-d$" | wc -l)
+  if [[ "$NUM_ACTIVE_CONNECTIONS" -gt "0" ]]; then
+    log "Connections are active"
+    return 1
+  fi
+
+  return 0
+}
+
+log() {
+  echo "$(date) $1"
 }
 
 reset_timer() {
@@ -29,18 +47,19 @@ timed_out() {
   [[ "$((current-last))" -gt "$TIMEOUT" ]]
 }
 
-log_connections() {
-  echo "$(date) -- $NUM_ACTIVE_CONNECTIONS active connections" >> /root/idler/idler.log
-}
-
 # main program logic
-if no_activity; then
-  if timed_out; then
-    pre_sleep
-    /usr/sbin/pm-suspend
-    post_sleep
+while true; do
+  if safe_to_sleep; then
+    if timed_out; then
+      log "Sleeping..."
+      pre_sleep
+      /usr/sbin/pm-suspend
+      log "Woke up."
+      reset_timer
+      post_sleep
+    fi
+  else
+    reset_timer
   fi
-else
-  reset_timer
-  log_connections
-fi
+  sleep 30s
+done
