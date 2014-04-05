@@ -5,15 +5,11 @@
 # Required-Stop:
 # Default-Start:     2 3 4 5
 # Default-Stop:      0 1 6
-# Short-Description: <Enter a short description of the sortware>
-# Description:       <Enter a long description of the software>
-#                    <...>
-#                    <...>
+# Short-Description: utility to put an idle server to sleep
 ### END INIT INFO
 
 # Author: Dan Rice <dan@zoombody.com>
 
-# PATH should only include /usr/* if it runs after the mountnfs.sh script
 PATH=/sbin:/usr/sbin:/bin:/usr/bin
 DESC=nightcap             # Introduce a short description here
 NAME=nightcap             # Introduce the short server's name here

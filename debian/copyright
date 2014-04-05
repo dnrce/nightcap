@@ -1,13 +1,8 @@
 Format: http://dep.debian.net/deps/dep5
 Upstream-Name: nightcap
-Source: <url://example.com>
+Source: https://github.com/zoombody/nightcap
 
 Files: *
-Copyright: <years> <put author's name and email here>
-           <years> <likewise for another author>
-License: GPL-2.0+
-
-Files: debian/*
 Copyright: 2014 Dan Rice <dan@zoombody.com>
 License: GPL-2.0+
 
@@ -27,6 +22,3 @@ License: GPL-2.0+
  .
  On Debian systems, the complete text of the GNU General
  Public License version 2 can be found in "/usr/share/common-licenses/GPL-2".
-
-# Please also look if there are files or directories which have a
-# different copyright/license attached and list them here.

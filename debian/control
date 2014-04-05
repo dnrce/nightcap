@@ -4,12 +4,11 @@ Priority: extra
 Maintainer: Dan Rice <dan@zoombody.com>
 Build-Depends: debhelper (>= 8.0.0)
 Standards-Version: 3.9.2
-Homepage: <insert the upstream URL, if relevant>
-#Vcs-Git: git://git.debian.org/collab-maint/nightcap.git
-#Vcs-Browser: http://git.debian.org/?p=collab-maint/nightcap.git;a=summary
+Homepage: https://github.com/zoombody/nightcap
+Vcs-Git: https://github.com/zoombody/nightcap.git
+Vcs-Browser: https://github.com/zoombody/nightcap
 
 Package: nightcap
 Architecture: all
 Depends: ${misc:Depends}
-Description: <insert up to 60 chars description>
- <insert long description, indented with spaces>
+Description: utility to put an idle server to sleep
