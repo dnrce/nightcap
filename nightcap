@@ -54,23 +54,21 @@ log() {
 }
 
 reset_timer() {
-  date +%s > $TIMESTAMP
+  TIMESTAMP=$(date +%s)
 }
 
 timed_out() {
   current=$(date +%s)
-  last=$(< $TIMESTAMP)
-  [[ "$((current-last))" -gt "$TIMEOUT" ]]
+  [[ "$((current-TIMESTAMP))" -gt "$TIMEOUT" ]]
 }
 
 quit() {
-  rm $TIMESTAMP
   exit
 }
 
 trap quit SIGINT SIGTERM
 
-TIMESTAMP=$(mktemp -p /var/tmp nightcap.XXXXXXXXXX)
+# initialize the timer
 reset_timer
 
 # main program logic
