@@ -40,7 +40,9 @@ safe_to_sleep() {
     return 1
   fi
 
-  NUM_ACTIVE_CONNECTIONS=$(netstat -np --inet | tail -n +3 | grep -v "127\.0\.0\.1\|transmission-d$" | wc -l)
+  TRANSMISSION_PID=$(pgrep -f transmission-daemon)
+  CRASHPLAN_PID=$(pgrep -f CrashPlanService)
+  NUM_ACTIVE_CONNECTIONS=$(netstat -np --inet | tail -n +3 | grep -v "127\.0\.0\.1\| $TRANSMISSION_PID\/\| $CRASHPLAN_PID\/" | wc -l)
   if [[ "$NUM_ACTIVE_CONNECTIONS" -gt "0" ]]; then
     log "Connections are active"
     return 1
