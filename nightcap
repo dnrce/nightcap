@@ -28,7 +28,7 @@ post_sleep () {
 
 # utility functions to make the logic easier to read
 safe_to_sleep() {
-  UNCLEAN_RAID_DEVICES=$(mdadm --detail /dev/md* | grep '^\s*State : ' | grep -v clean | wc -l)
+  UNCLEAN_RAID_DEVICES=$(mdadm --detail /dev/md* | grep '^\s*State : ' | grep -v "clean$" | wc -l)
   if [[ "$UNCLEAN_RAID_DEVICES" -gt "0" ]]; then
     log "Unclean RAID device(s)"
     return 1
