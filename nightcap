@@ -78,13 +78,18 @@ def active_user_sessions():
 
 def network_active():
   #TODO: Reimplement in pure(r) Python
-  f = os.popen('pgrep -f transmission-daemon')
-  TRANSMISSION_PID = int(f.readline())
-  f = os.popen('pgrep -f CrashPlanService')
-  CRASHPLAN_PID = int(f.readline())
-  f = os.popen('netstat -np --inet | tail -n +3 | grep -v "127\.0\.0\.1\| %i\/\| %i\/" | wc -l' % (TRANSMISSION_PID, CRASHPLAN_PID))
-  NUM_ACTIVE_CONNECTIONS = int(f.read())
-  return NUM_ACTIVE_CONNECTIONS > 0
+  ignored_processes = ['CrashPlanService', 'git-credential-cache--daemon', 'transmission-daemon']
+  ignored_pids = []
+  for process in ignored_processes:
+    try:
+      pid = int(subprocess.check_output(['pgrep', '-f', process]))
+      ignored_pids.append(pid)
+    except subprocess.CalledProcessError:
+      pass
+  pid_pattern = ''.join(['\| %i\/' % pid for pid in ignored_pids])
+  f = os.popen('netstat -np --inet | tail -n +3 | grep -v "127\.0\.0\.1' + pid_pattern + '" | wc -l')
+  num_active_connections = int(f.read())
+  return num_active_connections > 0
 
 def safe_to_sleep():
   if not raid_clean():
