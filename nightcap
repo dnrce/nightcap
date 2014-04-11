@@ -56,10 +56,7 @@ def raid_clean():
 def active_user_sessions():
   f = os.popen('who -q | tail -n1 | grep -o "[0-9]*"')
   NUM_USERS_LOGGED_IN = int(f.readline())
-  if NUM_USERS_LOGGED_IN > 0:
-    log("Active user session(s)")
-    return True
-  return False
+  return NUM_USERS_LOGGED_IN > 0:
 
 def network_active():
   f = os.popen('pgrep -f transmission-daemon')
@@ -68,19 +65,19 @@ def network_active():
   CRASHPLAN_PID = int(f.readline())
   f = os.popen('netstat -np --inet | tail -n +3 | grep -v "127\.0\.0\.1\| %i\/\| %i\/" | wc -l' % (TRANSMISSION_PID, CRASHPLAN_PID))
   NUM_ACTIVE_CONNECTIONS = int(f.read())
-  if NUM_ACTIVE_CONNECTIONS > 0:
-    log("Connections are active")
-    return True
-  return False
+  return NUM_ACTIVE_CONNECTIONS > 0
 
 def safe_to_sleep():
   if not raid_clean():
+    log("Unclean RAID device(s)")
     return False
 
   if active_user_sessions():
+    log("Active user session(s)")
     return False
 
   if network_active():
+    log("Connections are active")
     return False
 
   return True
