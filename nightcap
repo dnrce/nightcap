@@ -53,7 +53,6 @@ def raid_clean():
         return False
   return True
 
-# utility functions to make the logic easier to read
 def safe_to_sleep():
   if not raid_clean():
     return False
