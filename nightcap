@@ -16,6 +16,7 @@
 # along with this program; if not, write to the Free Software Foundation,
 # Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
+import logging
 import os
 import re
 import signal
@@ -26,6 +27,16 @@ import time
 timeout = 300
 
 router = '192.168.0.18'
+
+# set up logging
+logger = logging.getLogger()
+logger.setLevel(logging.DEBUG)
+fh = logging.FileHandler('/var/log/nightcap.log')
+fh.setFormatter(logging.Formatter('%(asctime)s %(levelname)s %(message)s'))
+ch = logging.StreamHandler()
+for h in fh, ch:
+  h.setLevel(logging.DEBUG)
+  logger.addHandler(h)
 
 def pre_sleep():
   exec_ssh(router, 'iptables -A FORWARD -d 192.168.0.32 -s 192.168.0.0/24 -j ACCEPT')
@@ -77,21 +88,18 @@ def network_active():
 
 def safe_to_sleep():
   if not raid_clean():
-    log("Unclean RAID device(s)")
+    logger.info("Unclean RAID device(s)")
     return False
 
   if active_user_sessions():
-    log("Active user session(s)")
+    logger.info("Active user session(s)")
     return False
 
   if network_active():
-    log("Connections are active")
+    logger.info("Connections are active")
     return False
 
   return True
-
-def log(message):
-  print time.strftime('%c'), message
 
 def reset_timer():
   global timestamp
@@ -113,12 +121,12 @@ reset_timer()
 # main program logic
 while 1:
   if safe_to_sleep():
-    log("Idle, waiting for timeout")
+    logger.info("Idle, waiting for timeout")
     if timed_out:
-      log("Sleeping...")
+      logger.info("Sleeping...")
       pre_sleep()
       suspend()
-      log("Wake up")
+      logger.info("Wake up")
       reset_timer()
       post_sleep()
   else:
