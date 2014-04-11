@@ -19,14 +19,18 @@
 TIMEOUT=300
 
 pre_sleep () {
-  ssh -q 192.168.0.18 "iptables -A FORWARD -p udp -d 192.168.0.32 --dport 43971 -j DROP"
+  ssh -q 192.168.0.18 "iptables -A FORWARD -d 192.168.0.32 -s 192.168.0.0/24 -j ACCEPT"
+  ssh -q 192.168.0.18 "iptables -A FORWARD -d 192.168.0.32 -p udp --dport 1194 -j ACCEPT"
   ssh -q 192.168.0.18 "iptables -A FORWARD -d 192.168.0.32 -j LOG"
+  ssh -q 192.168.0.18 "iptables -A FORWARD -d 192.168.0.32 -j REJECT"
 }
 
 post_sleep () {
   ssh -q 192.168.0.18 "grep 'user\.warn' /tmp/var/log/messages | tail"
+  ssh -q 192.168.0.18 "iptables -D FORWARD -d 192.168.0.32 -j REJECT"
   ssh -q 192.168.0.18 "iptables -D FORWARD -d 192.168.0.32 -j LOG"
-  ssh -q 192.168.0.18 "iptables -D FORWARD -p udp -d 192.168.0.32 --dport 43971 -j DROP"
+  ssh -q 192.168.0.18 "iptables -D FORWARD -d 192.168.0.32 -p udp --dport 1194 -j ACCEPT"
+  ssh -q 192.168.0.18 "iptables -D FORWARD -d 192.168.0.32 -s 192.168.0.0/24 -j ACCEPT"
 }
 
 # utility functions to make the logic easier to read
