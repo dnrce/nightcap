@@ -122,7 +122,7 @@ reset_timer()
 while 1:
   if safe_to_sleep():
     logger.info("Idle, waiting for timeout")
-    if timed_out:
+    if timed_out():
       logger.info("Sleeping...")
       pre_sleep()
       suspend()
