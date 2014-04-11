@@ -19,7 +19,7 @@
 import os
 import re
 import signal
-from subprocess import call, check_output
+import subprocess
 import sys
 import time
 
@@ -28,17 +28,23 @@ timeout = 300
 router = '192.168.0.18'
 
 def pre_sleep():
-  call(['ssh', '-q', router, 'iptables -A FORWARD -d 192.168.0.32 -s 192.168.0.0/24 -j ACCEPT'])
-  call(['ssh', '-q', router, 'iptables -A FORWARD -d 192.168.0.32 -p udp --dport 1194 -j ACCEPT'])
-  call(['ssh', '-q', router, 'iptables -A FORWARD -d 192.168.0.32 -j LOG'])
-  call(['ssh', '-q', router, 'iptables -A FORWARD -d 192.168.0.32 -j REJECT'])
+  exec_ssh(router, 'iptables -A FORWARD -d 192.168.0.32 -s 192.168.0.0/24 -j ACCEPT')
+  exec_ssh(router, 'iptables -A FORWARD -d 192.168.0.32 -p udp --dport 1194 -j ACCEPT')
+  exec_ssh(router, 'iptables -A FORWARD -d 192.168.0.32 -j LOG')
+  exec_ssh(router, 'iptables -A FORWARD -d 192.168.0.32 -j REJECT')
 
 def post_sleep():
-  check_output(['ssh', '-q', router, 'grep "user\.warn" /tmp/var/log/messages | tail'])
-  call(['ssh', '-q', router, 'iptables -D FORWARD -d 192.168.0.32 -j REJECT'])
-  call(['ssh', '-q', router, 'iptables -D FORWARD -d 192.168.0.32 -j LOG'])
-  call(['ssh', '-q', router, 'iptables -D FORWARD -d 192.168.0.32 -p udp --dport 1194 -j ACCEPT'])
-  call(['ssh', '-q', router, 'iptables -D FORWARD -d 192.168.0.32 -s 192.168.0.0/24 -j ACCEPT'])
+  print exec_ssh(router, 'grep "user\.warn" /tmp/var/log/messages | tail')
+  exec_ssh(router, 'iptables -D FORWARD -d 192.168.0.32 -j REJECT')
+  exec_ssh(router, 'iptables -D FORWARD -d 192.168.0.32 -j LOG')
+  exec_ssh(router, 'iptables -D FORWARD -d 192.168.0.32 -p udp --dport 1194 -j ACCEPT')
+  exec_ssh(router, 'iptables -D FORWARD -d 192.168.0.32 -s 192.168.0.0/24 -j ACCEPT')
+
+def suspend():
+  subprocess.call(['/usr/sbin/pm-suspend'])
+
+def exec_ssh(host, command):
+  return subprocess.check_output(['ssh', '-q', host, command])
 
 def raid_clean():
   f = open('/proc/mdstat')
@@ -109,7 +115,7 @@ while 1:
     if timed_out:
       log("Sleeping...")
       pre_sleep()
-      call(['/usr/sbin/pm-suspend'])
+      suspend()
       log("Wake up")
       reset_timer()
       post_sleep()
