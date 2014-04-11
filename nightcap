@@ -63,7 +63,7 @@ def active_user_sessions():
   #TODO: Reimplement in pure(r) Python
   f = os.popen('who -q | tail -n1 | grep -o "[0-9]*"')
   NUM_USERS_LOGGED_IN = int(f.readline())
-  return NUM_USERS_LOGGED_IN > 0:
+  return NUM_USERS_LOGGED_IN > 0
 
 def network_active():
   #TODO: Reimplement in pure(r) Python
