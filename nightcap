@@ -17,6 +17,7 @@
 # Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
 import os
+import re
 import signal
 from subprocess import call, check_output
 import sys
@@ -39,12 +40,22 @@ def post_sleep():
   call(['ssh', '-q', router, 'iptables -D FORWARD -d 192.168.0.32 -p udp --dport 1194 -j ACCEPT'])
   call(['ssh', '-q', router, 'iptables -D FORWARD -d 192.168.0.32 -s 192.168.0.0/24 -j ACCEPT'])
 
+def raid_clean():
+  f = open('/proc/mdstat')
+  mdstat = f.readlines()
+  f.close()
+  for line in mdstat:
+    if re.match('\s*\[', line):
+      return False
+    m = re.search('\[[U_]+\]$', line)
+    if m:
+      if '_' in m.group(0):
+        return False
+  return True
+
 # utility functions to make the logic easier to read
 def safe_to_sleep():
-  f = os.popen('cat /sys/block/md*/md/array_state | grep -v "^clean$\|^active$" | wc -l')
-  UNCLEAN_RAID_DEVICES = int(f.readline())
-  if UNCLEAN_RAID_DEVICES > 0:
-    log("Unclean RAID device(s)")
+  if not raid_clean():
     return False
 
   f = os.popen('who -q | tail -n1 | grep -o "[0-9]*"')
