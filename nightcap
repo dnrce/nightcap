@@ -22,7 +22,7 @@ from subprocess import call, check_output
 import sys
 import time
 
-TIMEOUT=300
+timeout = 300
 
 router = '192.168.0.18'
 
@@ -66,15 +66,15 @@ def safe_to_sleep():
   return True
 
 def log(message):
-  print check_output(['date']).strip(), message
+  print time.strftime('%c'), message
 
 def reset_timer():
-  global TIMESTAMP
-  TIMESTAMP = int(check_output(['date', '+%s']))
+  global timestamp
+  timestamp = time.time()
 
 def timed_out():
-  current = int(check_output(['date', '+%s']))
-  return current-TIMESTAMP > TIMEOUT
+  current = time.time()
+  return current-timestamp > timeout
 
 def quit(signum, frame):
   sys.exit()
