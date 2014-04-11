@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env python
 # nightcap, a utility to put an idle server to sleep
 # Copyright (C) 2014 Daniel Rice
 #
@@ -16,84 +16,86 @@
 # along with this program; if not, write to the Free Software Foundation,
 # Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
+import os
+import signal
+from subprocess import call, check_output
+import sys
+import time
+
 TIMEOUT=300
 
-pre_sleep () {
-  ssh -q 192.168.0.18 "iptables -A FORWARD -d 192.168.0.32 -s 192.168.0.0/24 -j ACCEPT"
-  ssh -q 192.168.0.18 "iptables -A FORWARD -d 192.168.0.32 -p udp --dport 1194 -j ACCEPT"
-  ssh -q 192.168.0.18 "iptables -A FORWARD -d 192.168.0.32 -j LOG"
-  ssh -q 192.168.0.18 "iptables -A FORWARD -d 192.168.0.32 -j REJECT"
-}
+router = '192.168.0.18'
 
-post_sleep () {
-  ssh -q 192.168.0.18 "grep 'user\.warn' /tmp/var/log/messages | tail"
-  ssh -q 192.168.0.18 "iptables -D FORWARD -d 192.168.0.32 -j REJECT"
-  ssh -q 192.168.0.18 "iptables -D FORWARD -d 192.168.0.32 -j LOG"
-  ssh -q 192.168.0.18 "iptables -D FORWARD -d 192.168.0.32 -p udp --dport 1194 -j ACCEPT"
-  ssh -q 192.168.0.18 "iptables -D FORWARD -d 192.168.0.32 -s 192.168.0.0/24 -j ACCEPT"
-}
+def pre_sleep():
+  call(['ssh', '-q', router, 'iptables -A FORWARD -d 192.168.0.32 -s 192.168.0.0/24 -j ACCEPT'])
+  call(['ssh', '-q', router, 'iptables -A FORWARD -d 192.168.0.32 -p udp --dport 1194 -j ACCEPT'])
+  call(['ssh', '-q', router, 'iptables -A FORWARD -d 192.168.0.32 -j LOG'])
+  call(['ssh', '-q', router, 'iptables -A FORWARD -d 192.168.0.32 -j REJECT'])
+
+def post_sleep():
+  check_output(['ssh', '-q', router, 'grep "user\.warn" /tmp/var/log/messages | tail'])
+  call(['ssh', '-q', router, 'iptables -D FORWARD -d 192.168.0.32 -j REJECT'])
+  call(['ssh', '-q', router, 'iptables -D FORWARD -d 192.168.0.32 -j LOG'])
+  call(['ssh', '-q', router, 'iptables -D FORWARD -d 192.168.0.32 -p udp --dport 1194 -j ACCEPT'])
+  call(['ssh', '-q', router, 'iptables -D FORWARD -d 192.168.0.32 -s 192.168.0.0/24 -j ACCEPT'])
 
 # utility functions to make the logic easier to read
-safe_to_sleep() {
-  UNCLEAN_RAID_DEVICES=$(cat /sys/block/md*/md/array_state | grep -v "^clean$\|^active$" | wc -l)
-  if [[ "$UNCLEAN_RAID_DEVICES" -gt "0" ]]; then
-    log "Unclean RAID device(s)"
-    return 1
-  fi
+def safe_to_sleep():
+  f = os.popen('cat /sys/block/md*/md/array_state | grep -v "^clean$\|^active$" | wc -l')
+  UNCLEAN_RAID_DEVICES = int(f.readline())
+  if UNCLEAN_RAID_DEVICES > 0:
+    log("Unclean RAID device(s)")
+    return False
 
-  NUM_USERS_LOGGED_IN=$(who -q | tail -n1 | grep -o "[0-9]*")
-  if [[ "$NUM_USERS_LOGGED_IN" -gt "0" ]]; then
-    log "Active user session(s)"
-    return 1
-  fi
+  f = os.popen('who -q | tail -n1 | grep -o "[0-9]*"')
+  NUM_USERS_LOGGED_IN = int(f.readline())
+  if NUM_USERS_LOGGED_IN > 0:
+    log("Active user session(s)")
+    return False
 
-  TRANSMISSION_PID=$(pgrep -f transmission-daemon)
-  CRASHPLAN_PID=$(pgrep -f CrashPlanService)
-  NUM_ACTIVE_CONNECTIONS=$(netstat -np --inet | tail -n +3 | grep -v "127\.0\.0\.1\| $TRANSMISSION_PID\/\| $CRASHPLAN_PID\/" | wc -l)
-  if [[ "$NUM_ACTIVE_CONNECTIONS" -gt "0" ]]; then
-    log "Connections are active"
-    return 1
-  fi
+  f = os.popen('pgrep -f transmission-daemon')
+  TRANSMISSION_PID = int(f.readline())
+  f = os.popen('pgrep -f CrashPlanService')
+  CRASHPLAN_PID = int(f.readline())
+  f = os.popen('netstat -np --inet | tail -n +3 | grep -v "127\.0\.0\.1\| %i\/\| %i\/" | wc -l' % (TRANSMISSION_PID, CRASHPLAN_PID))
+  NUM_ACTIVE_CONNECTIONS = int(f.read())
+  if NUM_ACTIVE_CONNECTIONS > 0:
+    log("Connections are active")
+    return False
 
-  return 0
-}
+  return True
 
-log() {
-  echo "$(date) $1"
-}
+def log(message):
+  print check_output(['date']).strip(), message
 
-reset_timer() {
-  TIMESTAMP=$(date +%s)
-}
+def reset_timer():
+  global TIMESTAMP
+  TIMESTAMP = int(check_output(['date', '+%s']))
 
-timed_out() {
-  current=$(date +%s)
-  [[ "$((current-TIMESTAMP))" -gt "$TIMEOUT" ]]
-}
+def timed_out():
+  current = int(check_output(['date', '+%s']))
+  return current-TIMESTAMP > TIMEOUT
 
-quit() {
-  exit
-}
+def quit(signum, frame):
+  sys.exit()
 
-trap quit SIGINT SIGTERM
+signal.signal(signal.SIGINT, quit)
+signal.signal(signal.SIGTERM, quit)
 
 # initialize the timer
-reset_timer
+reset_timer()
 
 # main program logic
-while true; do
-  if safe_to_sleep; then
-    log "Idle, waiting for timeout"
-    if timed_out; then
-      log "Sleeping..."
-      pre_sleep
-      /usr/sbin/pm-suspend
-      log "Wake up"
-      reset_timer
-      post_sleep
-    fi
-  else
-    reset_timer
-  fi
-  sleep 30s
-done
+while 1:
+  if safe_to_sleep():
+    log("Idle, waiting for timeout")
+    if timed_out:
+      log("Sleeping...")
+      pre_sleep()
+      call(['/usr/sbin/pm-suspend'])
+      log("Wake up")
+      reset_timer()
+      post_sleep()
+  else:
+    reset_timer()
+  time.sleep(30)
