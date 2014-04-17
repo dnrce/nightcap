@@ -24,10 +24,6 @@ import subprocess
 import sys
 import time
 
-timeout = 300
-
-router = '192.168.0.18'
-
 # set up logging
 logger = logging.getLogger()
 logger.setLevel(logging.DEBUG)
@@ -38,103 +34,104 @@ for h in fh, ch:
   h.setLevel(logging.DEBUG)
   logger.addHandler(h)
 
-def pre_sleep():
-  exec_ssh(router, 'iptables -A FORWARD -d 192.168.0.32 -s 192.168.0.0/24 -j ACCEPT')
-  exec_ssh(router, 'iptables -A FORWARD -d 192.168.0.32 -p udp --dport 1194 -j ACCEPT')
-  exec_ssh(router, 'iptables -A FORWARD -d 192.168.0.32 -j LOG')
-  exec_ssh(router, 'iptables -A FORWARD -d 192.168.0.32 -j REJECT')
+class Nightcap:
+  def __init__(self):
+    self.timeout = 300
+    self.router = '192.168.0.18'
+    self.reset_timer()
 
-def post_sleep():
-  print exec_ssh(router, 'grep "user\.warn" /tmp/var/log/messages | tail')
-  exec_ssh(router, 'iptables -D FORWARD -d 192.168.0.32 -j REJECT')
-  exec_ssh(router, 'iptables -D FORWARD -d 192.168.0.32 -j LOG')
-  exec_ssh(router, 'iptables -D FORWARD -d 192.168.0.32 -p udp --dport 1194 -j ACCEPT')
-  exec_ssh(router, 'iptables -D FORWARD -d 192.168.0.32 -s 192.168.0.0/24 -j ACCEPT')
+  def pre_sleep(self):
+    self.exec_ssh(self.router, 'iptables -A FORWARD -d 192.168.0.32 -s 192.168.0.0/24 -j ACCEPT')
+    self.exec_ssh(self.router, 'iptables -A FORWARD -d 192.168.0.32 -p udp --dport 1194 -j ACCEPT')
+    self.exec_ssh(self.router, 'iptables -A FORWARD -d 192.168.0.32 -j LOG')
+    self.exec_ssh(self.router, 'iptables -A FORWARD -d 192.168.0.32 -j REJECT')
 
-def suspend():
-  subprocess.call(['/usr/sbin/pm-suspend'])
+  def post_sleep(self):
+    print self.exec_ssh(self.router, 'grep "user\.warn" /tmp/var/log/messages | tail')
+    self.exec_ssh(self.router, 'iptables -D FORWARD -d 192.168.0.32 -j REJECT')
+    self.exec_ssh(self.router, 'iptables -D FORWARD -d 192.168.0.32 -j LOG')
+    self.exec_ssh(self.router, 'iptables -D FORWARD -d 192.168.0.32 -p udp --dport 1194 -j ACCEPT')
+    self.exec_ssh(self.router, 'iptables -D FORWARD -d 192.168.0.32 -s 192.168.0.0/24 -j ACCEPT')
 
-def exec_ssh(host, command):
-  return subprocess.check_output(['ssh', '-q', host, command])
+  def suspend(self):
+    subprocess.call(['/usr/sbin/pm-suspend'])
 
-def raid_clean():
-  f = open('/proc/mdstat')
-  mdstat = f.readlines()
-  f.close()
-  for line in mdstat:
-    if re.match('\s*\[', line):
-      return False
-    m = re.search('\[[U_]+\]$', line)
-    if m:
-      if '_' in m.group(0):
+  def exec_ssh(self, host, command):
+    return subprocess.check_output(['ssh', '-q', host, command])
+
+  def raid_clean(self):
+    f = open('/proc/mdstat')
+    mdstat = f.readlines()
+    f.close()
+    for line in mdstat:
+      if re.match('\s*\[', line):
         return False
-  return True
+      m = re.search('\[[U_]+\]$', line)
+      if m:
+        if '_' in m.group(0):
+          return False
+    return True
 
-def active_user_sessions():
-  #TODO: Reimplement in pure(r) Python
-  f = os.popen('who -q | tail -n1 | grep -o "[0-9]*"')
-  NUM_USERS_LOGGED_IN = int(f.readline())
-  return NUM_USERS_LOGGED_IN > 0
+  def active_user_sessions(self):
+    #TODO: Reimplement in pure(r) Python
+    f = os.popen('who -q | tail -n1 | grep -o "[0-9]*"')
+    NUM_USERS_LOGGED_IN = int(f.readline())
+    return NUM_USERS_LOGGED_IN > 0
 
-def network_active():
-  #TODO: Reimplement in pure(r) Python
-  ignored_processes = ['CrashPlanService', 'git-credential-cache--daemon', 'transmission-daemon']
-  ignored_pids = []
-  for process in ignored_processes:
-    try:
-      pid = int(subprocess.check_output(['pgrep', '-f', process]))
-      ignored_pids.append(pid)
-    except subprocess.CalledProcessError:
-      pass
-  pid_pattern = ''.join(['\| %i\/' % pid for pid in ignored_pids])
-  f = os.popen('netstat -np --inet | tail -n +3 | grep -v "127\.0\.0\.1' + pid_pattern + '" | wc -l')
-  num_active_connections = int(f.read())
-  return num_active_connections > 0
+  def network_active(self):
+    #TODO: Reimplement in pure(r) Python
+    ignored_processes = ['CrashPlanService', 'git-credential-cache--daemon', 'transmission-daemon']
+    ignored_pids = []
+    for process in ignored_processes:
+      try:
+        pid = int(subprocess.check_output(['pgrep', '-f', process]))
+        ignored_pids.append(pid)
+      except subprocess.CalledProcessError:
+        pass
+    pid_pattern = ''.join(['\| %i\/' % pid for pid in ignored_pids])
+    f = os.popen('netstat -np --inet | tail -n +3 | grep -v "127\.0\.0\.1' + pid_pattern + '" | wc -l')
+    num_active_connections = int(f.read())
+    return num_active_connections > 0
 
-def safe_to_sleep():
-  if not raid_clean():
-    logger.info("Unclean RAID device(s)")
-    return False
+  def safe_to_sleep(self):
+    if not self.raid_clean():
+      logger.info("Unclean RAID device(s)")
+      return False
+    if self.active_user_sessions():
+      logger.info("Active user session(s)")
+      return False
+    if self.network_active():
+      logger.info("Connections are active")
+      return False
+    return True
 
-  if active_user_sessions():
-    logger.info("Active user session(s)")
-    return False
+  def reset_timer(self):
+    self.timestamp = time.time()
 
-  if network_active():
-    logger.info("Connections are active")
-    return False
+  def timed_out(self):
+    current = time.time()
+    return current-self.timestamp > self.timeout
 
-  return True
+  def quit(self, signum, frame):
+    sys.exit()
 
-def reset_timer():
-  global timestamp
-  timestamp = time.time()
+  def loop(self):
+    while 1:
+      if self.safe_to_sleep():
+        if self.timed_out():
+          logger.info("Sleeping...")
+          self.pre_sleep()
+          self.suspend()
+          logger.info("Wake up")
+          self.reset_timer()
+          self.post_sleep()
+        else:
+          logger.info("Idle, waiting for timeout")
+      else:
+        self.reset_timer()
+      time.sleep(30)
 
-def timed_out():
-  current = time.time()
-  return current-timestamp > timeout
-
-def quit(signum, frame):
-  sys.exit()
-
-signal.signal(signal.SIGINT, quit)
-signal.signal(signal.SIGTERM, quit)
-
-# initialize the timer
-reset_timer()
-
-# main program logic
-while 1:
-  if safe_to_sleep():
-    if timed_out():
-      logger.info("Sleeping...")
-      pre_sleep()
-      suspend()
-      logger.info("Wake up")
-      reset_timer()
-      post_sleep()
-    else:
-      logger.info("Idle, waiting for timeout")
-  else:
-    reset_timer()
-  time.sleep(30)
+nightcap = Nightcap()
+signal.signal(signal.SIGINT, nightcap.quit)
+signal.signal(signal.SIGTERM, nightcap.quit)
+nightcap.loop()
