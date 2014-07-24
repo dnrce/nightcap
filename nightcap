@@ -131,7 +131,8 @@ class Nightcap:
         self.reset_timer()
       time.sleep(30)
 
-nightcap = Nightcap()
-signal.signal(signal.SIGINT, nightcap.quit)
-signal.signal(signal.SIGTERM, nightcap.quit)
-nightcap.loop()
+if __name__ == '__main__':
+  nightcap = Nightcap()
+  signal.signal(signal.SIGINT, nightcap.quit)
+  signal.signal(signal.SIGTERM, nightcap.quit)
+  nightcap.loop()
