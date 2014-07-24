@@ -88,8 +88,11 @@ class Nightcap:
         ignored_pids.append(pid)
       except subprocess.CalledProcessError:
         pass
-    pid_pattern = ''.join(['\| %i\/' % pid for pid in ignored_pids])
-    f = os.popen('netstat -np --inet | tail -n +3 | grep -v "127\.0\.0\.1' + pid_pattern + '" | wc -l')
+    local_pattern = ['127\.0\.0\.1']
+    pid_pattern = [' %i\/' % pid for pid in ignored_pids]
+    stale_pattern = ['FIN_WAIT1', 'FIN_WAIT2', 'TIME_WAIT']
+    grep_patterns = local_pattern + pid_pattern + stale_pattern
+    f = os.popen('netstat -np --inet | tail -n +3 | grep -v "' + '\|'.join(grep_patterns) + '" | wc -l')
     num_active_connections = int(f.read())
     return num_active_connections > 0
 
