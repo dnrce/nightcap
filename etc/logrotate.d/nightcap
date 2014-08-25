@@ -1,0 +1,6 @@
+/var/log/nightcap.log {
+	daily
+	rotate 7
+	missingok
+	compress
+}

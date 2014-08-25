@@ -17,6 +17,7 @@
 # Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
 import logging
+import logging.handlers
 import os
 import re
 import signal
@@ -27,7 +28,7 @@ import time
 # set up logging
 logger = logging.getLogger()
 logger.setLevel(logging.DEBUG)
-fh = logging.FileHandler('/var/log/nightcap.log')
+fh = logging.handlers.WatchedFileHandler('/var/log/nightcap.log')
 fh.setFormatter(logging.Formatter('%(asctime)s %(levelname)s %(message)s'))
 ch = logging.StreamHandler()
 for h in fh, ch:
