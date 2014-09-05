@@ -42,23 +42,15 @@ class Nightcap:
     self.reset_timer()
 
   def pre_sleep(self):
-    self.exec_ssh(self.router, 'iptables -A FORWARD -d 192.168.0.32 -s 192.168.0.0/24 -j ACCEPT')
-    self.exec_ssh(self.router, 'iptables -A FORWARD -d 192.168.0.32 -p udp --dport 1194 -j ACCEPT')
-    self.exec_ssh(self.router, 'iptables -A FORWARD -d 192.168.0.32 -j LOG')
-    self.exec_ssh(self.router, 'iptables -A FORWARD -d 192.168.0.32 -j REJECT')
+    r = subprocess.check_output(['bash', '/etc/nightcap/before_sleep'])
+    logger.debug(r)
 
   def post_sleep(self):
-    print self.exec_ssh(self.router, 'grep "user\.warn" /tmp/var/log/messages | tail')
-    self.exec_ssh(self.router, 'iptables -D FORWARD -d 192.168.0.32 -j REJECT')
-    self.exec_ssh(self.router, 'iptables -D FORWARD -d 192.168.0.32 -j LOG')
-    self.exec_ssh(self.router, 'iptables -D FORWARD -d 192.168.0.32 -p udp --dport 1194 -j ACCEPT')
-    self.exec_ssh(self.router, 'iptables -D FORWARD -d 192.168.0.32 -s 192.168.0.0/24 -j ACCEPT')
+    r = subprocess.check_output(['bash', '/etc/nightcap/after_wake'])
+    logger.debug(r)
 
   def suspend(self):
     subprocess.call(['/usr/sbin/pm-suspend'])
-
-  def exec_ssh(self, host, command):
-    return subprocess.check_output(['ssh', '-q', host, command])
 
   def raid_clean(self):
     f = open('/proc/mdstat')
