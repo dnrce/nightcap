@@ -40,12 +40,8 @@ class Nightcap:
     self.timeout = 300
     self.reset_timer()
 
-  def pre_sleep(self):
-    r = subprocess.check_output(['bash', '/etc/nightcap/before_sleep'])
-    logger.debug(r)
-
-  def post_sleep(self):
-    r = subprocess.check_output(['bash', '/etc/nightcap/after_wake'])
+  def run_hook(self, hook_name):
+    r = subprocess.check_output(['bash', '/etc/nightcap/' + hook_name])
     logger.debug(r)
 
   def suspend(self):
@@ -115,11 +111,11 @@ class Nightcap:
       if self.safe_to_sleep():
         if self.timed_out():
           logger.info("Sleeping...")
-          self.pre_sleep()
+          self.run_hook("before_sleep")
           self.suspend()
           logger.info("Wake up")
           self.reset_timer()
-          self.post_sleep()
+          self.run_hook("after_wake")
         else:
           logger.info("Idle, waiting for timeout")
       else:
