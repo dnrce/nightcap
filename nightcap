@@ -38,7 +38,6 @@ for h in fh, ch:
 class Nightcap:
   def __init__(self):
     self.timeout = 300
-    self.router = '192.168.0.18'
     self.reset_timer()
 
   def pre_sleep(self):
